@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHADOW-MITIGATE Field SOC</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-950 text-gray-100 font-sans h-screen flex flex-col">
+<!-- Top Navigation -->
+<header class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex justify-between items-center">
+    <div class="flex items-center space-x-3">
+        <i class="fa-solid fa-shield-cat text-purple-500 text-2xl"></i>
+        <span class="text-xl font-bold text-purple-400">SHADOW-MITIGATE <span class="text-xs text-gray-400 px-2 py-0.5 bg-gray-800 rounded">Field SOC v2.0</span></span>
+    </div>
+    <span class="text-xs text-green-400"><i class="fa-solid fa-circle text-[8px] mr-1"></i> Cloud UI Connected</span>
+</header>
+
+<!-- Main Workspace -->
+<div class="flex-1 flex overflow-hidden">
+    <aside class="w-64 bg-gray-900 border-r border-gray-800 p-4 space-y-2">
+        <button onclick="switchTab('overview')" id="btn-overview" class="w-full text-left px-4 py-2 bg-gray-800 text-sm rounded text-purple-300 font-semibold transition"><i class="fa-solid fa-chart-line mr-2"></i> Ops Overview</button>
+        <button onclick="switchTab('isolation')" id="btn-isolation" class="w-full text-left px-4 py-2 hover:bg-gray-800 text-sm rounded text-gray-300 transition"><i class="fa-solid fa-network-wired mr-2"></i> Host Isolation</button>
+        <button onclick="switchTab('cdr')" id="btn-cdr" class="w-full text-left px-4 py-2 hover:bg-gray-800 text-sm rounded text-gray-300 transition"><i class="fa-solid fa-broom mr-2"></i> CDR Sanitizer</button>
+    </aside>
+
+    <main class="flex-1 p-6 overflow-y-auto space-y-6">
+        <!-- TAB 1: OVERVIEW -->
+        <div id="tab-content-overview" class="space-y-4">
+            <h2 class="text-2xl font-bold">Field Operations Command</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-gray-900 p-4 rounded-lg border border-gray-800">
+                    <div class="text-xs text-gray-400">System Status</div>
+                    <div class="text-2xl font-bold text-green-400 mt-1">Operational</div>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-lg border border-gray-800">
+                    <div class="text-xs text-gray-400">Active Pipeline</div>
+                    <div class="text-2xl font-bold text-blue-400 mt-1">Vercel -> iPhone (Serveo)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: HOST ISOLATION -->
+        <div id="tab-content-isolation" class="hidden space-y-4">
+            <h2 class="text-2xl font-bold">EDR Host Isolation (Wazuh API)</h2>
+            <div class="bg-gray-900 p-5 rounded-lg border border-gray-800 space-y-3 max-w-xl">
+                <label class="block text-xs text-gray-400">Target Host IP / Agent ID</label>
+                <input id="host-input" type="text" placeholder="e.g., 10.0.4.50" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-gray-200 focus:outline-none">
+                <button onclick="triggerIsolate()" class="bg-blue-600 hover:bg-blue-500 text-xs px-4 py-2 rounded text-white font-semibold transition">Execute Quarantine API Call</button>
+                <pre id="isolation-result" class="bg-gray-950 p-3 rounded text-xs font-mono text-gray-300 hidden mt-2"></pre>
+            </div>
+        </div>
+
+        <!-- TAB 3: CDR SANITIZER -->
+        <div id="tab-content-cdr" class="hidden space-y-4">
+            <h2 class="text-2xl font-bold">Content Disarm & Reconstruction (CDR)</h2>
+            <div class="bg-gray-900 p-5 rounded-lg border border-gray-800 space-y-3 max-w-xl">
+                <label class="block text-xs text-gray-400">Payload File Path (Server Side)</label>
+                <input id="cdr-input" type="text" value="sample.docx" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-gray-200">
+                <button onclick="triggerCDR()" class="bg-teal-600 hover:bg-teal-500 text-xs px-4 py-2 rounded text-white font-semibold transition">Sanitize Payload</button>
+                <pre id="cdr-result" class="bg-gray-950 p-3 rounded text-xs font-mono text-teal-300 hidden mt-2"></pre>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // Bound directly to your active Serveo tunnel URL
+    const BACKEND_URL = 'https://919a6d4f2b187a55-74-255-35-65.serveousercontent.com';
+
+    function switchTab(tab) {
+        ['overview', 'isolation', 'cdr'].forEach(t => {
+            document.getElementById(`tab-content-${t}`).classList.add('hidden');
+            document.getElementById(`btn-${t}`).classList.remove('bg-gray-800', 'text-purple-300');
+            document.getElementById(`btn-${t}`).classList.add('hover:bg-gray-800', 'text-gray-300');
+        });
+        document.getElementById(`tab-content-${tab}`).classList.remove('hidden');
+        document.getElementById(`btn-${tab}`).classList.add('bg-gray-800', 'text-purple-300');
+        document.getElementById(`btn-${tab}`).classList.remove('hover:bg-gray-800', 'text-gray-300');
+    }
+
+    function triggerIsolate() {
+        const agentId = document.getElementById('host-input').value;
+        if(!agentId) return alert('Enter a target IP or Agent ID.');
+        fetch(`${BACKEND_URL}/api/wazuh/isolate`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({agentId})
+        })
+        .then(r => r.json())
+        .then(res => {
+            const out = document.getElementById('isolation-result');
+            out.classList.remove('hidden');
+            out.innerText = JSON.stringify(res, null, 2);
+        })
+        .catch(err => alert('API Error: ' + err));
+    }
+
+    function triggerCDR() {
+        const inputFile = document.getElementById('cdr-input').value;
+        fetch(`${BACKEND_URL}/api/cdr/sanitize`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({inputFile, outputFile: 'clean_' + inputFile})
+        })
+        .then(r => r.json())
+        .then(res => {
+            const out = document.getElementById('cdr-result');
+            out.classList.remove('hidden');
+            out.innerText = res.log || JSON.stringify(res, null, 2);
+        })
+        .catch(err => alert('API Error: ' + err));
+    }
+</script>
+</body>
+</html>
