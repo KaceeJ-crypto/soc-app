@@ -3,115 +3,456 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SHADOW-MITIGATE Field SOC</title>
+    <title>Defensive SOC, IDS & Honeypot Command Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gray-950 text-gray-100 font-sans h-screen flex flex-col">
-    <!-- Top Navigation -->
-    <header class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex justify-between items-center">
+<body class="bg-gray-950 text-green-400 font-mono h-screen flex flex-col overflow-hidden select-none">
+
+    <!-- Top Header -->
+    <header class="bg-gray-900 border-b border-gray-800 px-4 py-2 flex justify-between items-center z-20">
         <div class="flex items-center space-x-3">
-            <i class="fa-solid fa-shield-cat text-purple-500 text-2xl"></i>
-            <span class="text-xl font-bold text-purple-400">SHADOW-MITIGATE <span class="text-xs text-gray-400 px-2 py-0.5 bg-gray-800 rounded">Field SOC v2.0</span></span>
+            <button onclick="toggleSidebar()" class="md:hidden text-green-400 text-lg focus:outline-none"><i class="fa-solid fa-bars"></i></button>
+            <i class="fa-solid fa-shield-halved text-green-500 text-xl"></i>
+            <span class="text-xs md:text-sm font-bold text-green-300 tracking-wider">DEFENSIVE-SOC <span class="text-[9px] bg-green-950 text-green-400 border border-green-800 px-1 py-0.5 rounded">v10.0 UNIFIED</span></span>
         </div>
-        <span class="text-xs text-green-400"><i class="fa-solid fa-circle text-[8px] mr-1"></i> Cloud UI Connected</span>
+        <div class="flex items-center space-x-2 text-xs">
+            <button onclick="exportAuditBundle()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-2 py-1 rounded text-[10px] flex items-center transition">
+                <i class="fa-solid fa-download mr-1"></i> EXPORT LOGS
+            </button>
+            <button onclick="toggleLogging()" id="rec-btn" class="bg-gray-800 border border-gray-700 text-gray-400 px-2 py-1 rounded text-[10px] flex items-center transition">
+                <i class="fa-solid fa-circle text-[5px] mr-1"></i> LOGGING OFF
+            </button>
+            <button onclick="resetSessionState()" class="bg-red-950 hover:bg-red-800 text-red-200 border border-red-700 px-2 py-1 rounded font-bold text-[10px] tracking-wider transition">
+                <i class="fa-solid fa-eraser mr-1"></i> RESET UI
+            </button>
+        </div>
     </header>
 
-    <!-- Main Workspace -->
-    <div class="flex-1 flex overflow-hidden">
-        <aside class="w-64 bg-gray-900 border-r border-gray-800 p-4 space-y-2">
-            <button onclick="switchTab('overview')" id="btn-overview" class="w-full text-left px-4 py-2 bg-gray-800 text-sm rounded text-purple-300 font-semibold transition"><i class="fa-solid fa-chart-line mr-2"></i> Ops Overview</button>
-            <button onclick="switchTab('isolation')" id="btn-isolation" class="w-full text-left px-4 py-2 hover:bg-gray-800 text-sm rounded text-gray-300 transition"><i class="fa-solid fa-network-wired mr-2"></i> Host Isolation</button>
-            <button onclick="switchTab('cdr')" id="btn-cdr" class="w-full text-left px-4 py-2 hover:bg-gray-800 text-sm rounded text-gray-300 transition"><i class="fa-solid fa-broom mr-2"></i> CDR Sanitizer</button>
+    <!-- Main Layout -->
+    <div class="flex-1 flex overflow-hidden relative">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="absolute md:relative z-10 w-64 h-full bg-gray-900 border-r border-gray-800 p-3 space-y-1 transform -translate-x-full md:translate-x-0 transition-transform duration-200 flex flex-col justify-between overflow-y-auto">
+            <div class="space-y-1">
+                <button onclick="switchTab('intrusions')" id="btn-intrusions" class="w-full text-left px-3 py-2 bg-gray-800 text-xs rounded text-green-300 font-semibold transition border border-gray-700"><i class="fa-solid fa-bell mr-2"></i> Intrusion & IDS Triage</button>
+                <button onclick="switchTab('honeypots')" id="btn-honeypots" class="w-full text-left px-3 py-2 hover:bg-gray-800/50 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-spider mr-2"></i> Honeypot Decoys</button>
+                <button onclick="switchTab('quarantine')" id="btn-quarantine" class="w-full text-left px-3 py-2 hover:bg-gray-800/50 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-ban mr-2"></i> IP Isolation & Quarantine</button>
+                <button onclick="switchTab('recovery')" id="btn-recovery" class="w-full text-left px-3 py-2 hover:bg-gray-800/50 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-clipboard-check mr-2"></i> Recovery & Playbooks</button>
+                <button onclick="switchTab('mixers')" id="btn-mixers" class="w-full text-left px-3 py-2 hover:bg-gray-800/50 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-coins mr-2"></i> Mixers & Miners Watch</button>
+                <button onclick="switchTab('hunting')" id="btn-hunting" class="w-full text-left px-3 py-2 hover:bg-gray-800/50 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-magnifying-glass mr-2"></i> Threat Hunting Rules</button>
+                <button onclick="switchTab('scriptlab')" id="btn-scriptlab" class="w-full text-left px-3 py-2 hover:bg-gray-800/50 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-code mr-2"></i> Script Lab & Launcher</button>
+                <button onclick="switchTab('tools')" id="btn-tools" class="w-full text-left px-3 py-2 hover:bg-gray-800/50 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-toolbox mr-2"></i> Defensive Tool Hub</button>
+                <button onclick="switchTab('comms')" id="btn-comms" class="w-full text-left px-3 py-2 hover:bg-gray-800/50 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-video mr-2"></i> Briefing Room</button>
+                <button onclick="switchTab('console')" id="btn-console" class="w-full text-left px-3 py-2 hover:bg-gray-800/50 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-terminal mr-2"></i> Diagnostic Console</button>
+            </div>
+            <div class="p-2 bg-gray-950 rounded border border-gray-800 text-[10px] text-gray-500 space-y-1 mt-3">
+                <div>Isolated IPs: <span class="text-red-400 font-mono" id="iso-count">0</span></div>
+                <div>Mode: <span class="text-green-400 font-mono">Defensive Lab</span></div>
+            </div>
         </aside>
 
-        <main class="flex-1 p-6 overflow-y-auto space-y-6">
-            <!-- TAB 1: OVERVIEW -->
-            <div id="tab-content-overview" class="space-y-4">
-                <h2 class="text-2xl font-bold">Field Operations Command</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800">
-                        <div class="text-xs text-gray-400">System Status</div>
-                        <div class="text-2xl font-bold text-green-400 mt-1">Operational</div>
+        <!-- Main Content -->
+        <main class="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 bg-gray-950">
+
+            <!-- TAB 1: INTRUSION & IDS TRIAGE -->
+            <div id="tab-content-intrusions" class="space-y-4">
+                <div class="flex flex-wrap justify-between items-center gap-2">
+                    <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest"><i class="fa-solid fa-bell mr-2"></i> Intrusion Detection & Alert Triage</h2>
+                    <div class="flex items-center space-x-2 text-xs">
+                        <select id="severity-filter" onchange="renderAlerts()" class="bg-gray-900 border border-gray-700 text-gray-200 rounded px-2 py-1 text-[11px]">
+                            <option value="ALL">All Severities</option>
+                            <option value="HIGH">High Only</option>
+                            <option value="MEDIUM">Medium Only</option>
+                        </select>
+                        <button onclick="addSampleAlert()" class="bg-green-950 hover:bg-green-900 border border-green-700 text-green-300 px-2.5 py-1 rounded text-[11px] font-bold">
+                            + Log Lab Event
+                        </button>
                     </div>
-                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800">
-                        <div class="text-xs text-gray-400">Active Pipeline</div>
-                        <div class="text-2xl font-bold text-blue-400 mt-1">GitHub Pages -> iPhone (Serveo)</div>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 overflow-x-auto">
+                    <table class="w-full text-left text-xs text-gray-300">
+                        <thead class="bg-gray-950 text-gray-500 uppercase text-[10px] border-b border-gray-800">
+                            <tr>
+                                <th class="p-2">Time</th>
+                                <th class="p-2">Severity</th>
+                                <th class="p-2">Source IP</th>
+                                <th class="p-2">Detection / Category</th>
+                                <th class="p-2">Status</th>
+                                <th class="p-2">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alerts-tbody" class="divide-y divide-gray-800 font-mono text-[11px]"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 2: HONEYPOT DECOYS -->
+            <div id="tab-content-honeypots" class="hidden space-y-4">
+                <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest"><i class="fa-solid fa-spider mr-2"></i> Honeypot Decoy Telemetry & Frameworks</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-green-300">Cowrie (SSH/Telnet Decoy)</span>
+                            <span class="text-[10px] bg-green-950 text-green-400 px-1.5 py-0.5 rounded border border-green-800">Lab Decoy</span>
+                        </div>
+                        <p class="text-xs text-gray-400">Emulates SSH/Telnet services to log connection attempts, session transcripts, and downloaded sample hashes safely in isolation.</p>
+                        <a href="https://cowrie.org/" target="_blank" class="text-[11px] text-blue-400 hover:underline block">Cowrie Project Docs</a>
+                    </div>
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-blue-300">Dionaea (Service Decoy)</span>
+                            <span class="text-[10px] bg-blue-950 text-blue-300 px-1.5 py-0.5 rounded border border-blue-800">Protocol Watch</span>
+                        </div>
+                        <p class="text-xs text-gray-400">Captures connection probes across network protocols in sandboxed lab topologies.</p>
+                        <a href="https://www.smokescreen.io/practical-honeypots-a-list-of-open-source-deception-tools-that-detect-threats-for-free/" target="_blank" class="text-[11px] text-blue-400 hover:underline block">Honeypot Architecture Guide</a>
+                    </div>
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-purple-300">T-Pot Multi-Honeypot Suite</span>
+                            <span class="text-[10px] bg-purple-950 text-purple-300 px-1.5 py-0.5 rounded border border-purple-800">Aggregated</span>
+                        </div>
+                        <p class="text-xs text-gray-400">Combines multiple decoy sensors with centralized log visualization for student deception labs.</p>
+                        <a href="https://github.com/telekom-security/tpotce" target="_blank" class="text-[11px] text-blue-400 hover:underline block">T-Pot Repository</a>
                     </div>
                 </div>
             </div>
 
-            <!-- TAB 2: HOST ISOLATION -->
-            <div id="tab-content-isolation" class="hidden space-y-4">
-                <h2 class="text-2xl font-bold">EDR Host Isolation (Wazuh API)</h2>
-                <div class="bg-gray-900 p-5 rounded-lg border border-gray-800 space-y-3 max-w-xl">
-                    <label class="block text-xs text-gray-400">Target Host IP / Agent ID</label>
-                    <input id="host-input" type="text" placeholder="e.g., 10.0.4.50" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-gray-200 focus:outline-none">
-                    <button onclick="triggerIsolate()" class="bg-blue-600 hover:bg-blue-500 text-xs px-4 py-2 rounded text-white font-semibold transition">Execute Quarantine API Call</button>
-                    <pre id="isolation-result" class="bg-gray-950 p-3 rounded text-xs font-mono text-gray-300 hidden mt-2"></pre>
+            <!-- TAB 3: IP ISOLATION & QUARANTINE -->
+            <div id="tab-content-quarantine" class="hidden space-y-4">
+                <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest"><i class="fa-solid fa-ban mr-2"></i> IP Isolation, Quarantine & Rollback Manager</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-3">
+                        <label class="block text-xs text-gray-400">Host / Source IP to Quarantine</label>
+                        <input id="quarantine-ip-input" type="text" placeholder="e.g., 192.168.50.24" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300 focus:outline-none">
+                        <label class="block text-xs text-gray-400">Containment Scope</label>
+                        <select id="quarantine-scope" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300 focus:outline-none">
+                            <option value="BLOCK_ALL">Drop Ingress & Egress (Quarantine)</option>
+                            <option value="SUBNET_ISOLATE">Isolate to Lab VLAN / Loopback Only</option>
+                            <option value="RATE_LIMIT">Throttle Connection Rate</option>
+                        </select>
+                        <button onclick="addQuarantineEntry()" class="w-full bg-red-950 hover:bg-red-900 border border-red-800 text-red-200 text-xs py-2 rounded font-bold transition">
+                            Apply Containment Policy
+                        </button>
+                    </div>
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-2">
+                        <div class="text-xs font-bold text-amber-400 uppercase">Active Containment & Rollback List</div>
+                        <div id="quarantine-list" class="space-y-2 text-xs font-mono">
+                            <div class="text-gray-500 text-[11px]">No IPs currently quarantined.</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- TAB 3: CDR SANITIZER -->
-            <div id="tab-content-cdr" class="hidden space-y-4">
-                <h2 class="text-2xl font-bold">Content Disarm & Reconstruction (CDR)</h2>
-                <div class="bg-gray-900 p-5 rounded-lg border border-gray-800 space-y-3 max-w-xl">
-                    <label class="block text-xs text-gray-400">Payload File Path (Server Side)</label>
-                    <input id="cdr-input" type="text" value="sample.docx" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-gray-200">
-                    <button onclick="triggerCDR()" class="bg-teal-600 hover:bg-teal-500 text-xs px-4 py-2 rounded text-white font-semibold transition">Sanitize Payload</button>
-                    <pre id="cdr-result" class="bg-gray-950 p-3 rounded text-xs font-mono text-teal-300 hidden mt-2"></pre>
+            <!-- TAB 4: RECOVERY & PLAYBOOKS -->
+            <div id="tab-content-recovery" class="hidden space-y-4">
+                <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest"><i class="fa-solid fa-clipboard-check mr-2"></i> Post-Incident Containment & Recovery Checklist</h2>
+                <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-2 text-xs max-w-2xl">
+                    <label class="flex items-center space-x-2 p-2 bg-gray-950 rounded border border-gray-800 cursor-pointer">
+                        <input type="checkbox" class="accent-green-500"> <span>1. Verify host or IP isolation rule is active and test connectivity drop.</span>
+                    </label>
+                    <label class="flex items-center space-x-2 p-2 bg-gray-950 rounded border border-gray-800 cursor-pointer">
+                        <input type="checkbox" class="accent-green-500"> <span>2. Preserve volatile logs, packet captures, and file hashes before cleanup.</span>
+                    </label>
+                    <label class="flex items-center space-x-2 p-2 bg-gray-950 rounded border border-gray-800 cursor-pointer">
+                        <input type="checkbox" class="accent-green-500"> <span>3. Rotate affected lab credentials, SSH keys, and API tokens.</span>
+                    </label>
+                    <label class="flex items-center space-x-2 p-2 bg-gray-950 rounded border border-gray-800 cursor-pointer">
+                        <input type="checkbox" class="accent-green-500"> <span>4. Re-run baseline integrity checks and confirm alerts subside.</span>
+                    </label>
                 </div>
             </div>
+
+            <!-- TAB 5: MIXERS & MINERS WATCH -->
+            <div id="tab-content-mixers" class="hidden space-y-4">
+                <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest"><i class="fa-solid fa-coins mr-2"></i> Mixers & Miners Watchlist</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-2">
+                        <div class="font-bold text-amber-400 uppercase">Mixers & Privacy Pools (Advisory Reference)</div>
+                        <p class="text-gray-400 text-[11px]">Track public compliance advisories and ledger flows using official explorers and regulatory resources.</p>
+                        <div class="flex flex-wrap gap-3 text-[11px]">
+                            <a href="https://ofac.treasury.gov/" target="_blank" class="text-green-400 hover:underline">OFAC Advisories</a>
+                            <a href="https://etherscan.io/" target="_blank" class="text-blue-400 hover:underline">Etherscan</a>
+                            <a href="https://www.blockchain.com/explorer" target="_blank" class="text-blue-400 hover:underline">Blockchain Explorer</a>
+                        </div>
+                    </div>
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-2">
+                        <div class="font-bold text-blue-400 uppercase">Mining Pools & Stratum Indicators</div>
+                        <p class="text-gray-400 text-[11px]">Monitor lab endpoints for anomalous outbound Stratum connections (ports 3333, 4444, 5555) and sustained CPU spikes.</p>
+                        <div class="flex flex-wrap gap-3 text-[11px]">
+                            <a href="https://supportxmr.com/" target="_blank" class="text-blue-400 hover:underline">SupportXMR</a>
+                            <a href="https://www.f2pool.com/" target="_blank" class="text-blue-400 hover:underline">F2Pool</a>
+                            <a href="https://braiins.com/pool" target="_blank" class="text-blue-400 hover:underline">Braiins Pool</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 6: THREAT HUNTING RULES -->
+            <div id="tab-content-hunting" class="hidden space-y-4">
+                <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest"><i class="fa-solid fa-magnifying-glass mr-2"></i> Detection & Hunting Rule Generator</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-3">
+                        <select id="hunt-format" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300">
+                            <option value="sigma">Sigma Detection Rule</option>
+                            <option value="yara">YARA Signature</option>
+                            <option value="kql">KQL Hunting Query</option>
+                        </select>
+                        <input id="hunt-target" type="text" value="suspicious_ssh_brute_force" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300">
+                        <button onclick="generateRule()" class="w-full bg-green-950 hover:bg-green-900 border border-green-700 text-green-300 text-xs py-2 rounded font-bold">Generate Rule</button>
+                    </div>
+                    <pre id="hunt-output" class="bg-gray-900 p-4 rounded-lg border border-gray-800 text-[11px] font-mono text-gray-300 overflow-auto">Select format and click "Generate Rule".</pre>
+                </div>
+            </div>
+
+            <!-- TAB 7: SCRIPT LAB & LAUNCHER -->
+            <div id="tab-content-scriptlab" class="hidden space-y-4">
+                <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest"><i class="fa-solid fa-code mr-2"></i> Script Lab Manifest & Task Runner</h2>
+                <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-3 max-w-2xl">
+                    <input id="task-name" type="text" value="local-socket-baseline" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300">
+                    <textarea id="task-script" rows="4" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300">ss -tulnp
+sha256sum /etc/hosts</textarea>
+                    <button onclick="runLabManifest()" class="w-full bg-green-950 hover:bg-green-900 border border-green-700 text-green-300 text-xs py-2 rounded font-bold">Package & Run Allowlisted Lab Check</button>
+                    <pre id="task-result" class="bg-gray-950 p-3 rounded text-[11px] font-mono text-gray-300 h-32 overflow-y-auto border border-gray-800">[+] Ready.</pre>
+                </div>
+            </div>
+
+            <!-- TAB 8: DEFENSIVE TOOL HUB -->
+            <div id="tab-content-tools" class="hidden space-y-4">
+                <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest"><i class="fa-solid fa-toolbox mr-2"></i> Open-Source Defensive & OSINT Stack</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-1">
+                        <div class="font-bold text-blue-400">IDS & Network Telemetry</div>
+                        <ul class="text-gray-400 space-y-1 list-disc list-inside">
+                            <li><a href="https://suricata.io/" target="_blank" class="hover:text-green-300">Suricata IDS/IPS</a></li>
+                            <li><a href="https://zeek.org/" target="_blank" class="hover:text-green-300">Zeek Network Monitor</a></li>
+                            <li><a href="https://www.wireshark.org/" target="_blank" class="hover:text-green-300">Wireshark</a></li>
+                        </ul>
+                    </div>
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-1">
+                        <div class="font-bold text-purple-400">Host SIEM & EDR</div>
+                        <ul class="text-gray-400 space-y-1 list-disc list-inside">
+                            <li><a href="https://wazuh.com/" target="_blank" class="hover:text-green-300">Wazuh Platform</a></li>
+                            <li><a href="https://osquery.io/" target="_blank" class="hover:text-green-300">osquery</a></li>
+                            <li><a href="https://virustotal.github.io/yara/" target="_blank" class="hover:text-green-300">YARA</a></li>
+                        </ul>
+                    </div>
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-1">
+                        <div class="font-bold text-teal-400">Threat Intel & ATT&CK</div>
+                        <ul class="text-gray-400 space-y-1 list-disc list-inside">
+                            <li><a href="https://attack.mitre.org/" target="_blank" class="hover:text-green-300">MITRE ATT&CK</a></li>
+                            <li><a href="https://otx.alienvault.com/" target="_blank" class="hover:text-green-300">AlienVault OTX</a></li>
+                            <li><a href="https://osintframework.com/" target="_blank" class="hover:text-green-300">OSINT Framework</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 9: BRIEFING ROOM -->
+            <div id="tab-content-comms" class="hidden space-y-4">
+                <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest"><i class="fa-solid fa-video mr-2"></i> Incident Briefing Room</h2>
+                <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-3 max-w-xl">
+                    <input id="room-name" type="text" value="soc-triage-room" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300">
+                    <button onclick="openRoom()" class="bg-green-950 hover:bg-green-900 border border-green-700 text-green-300 text-xs px-4 py-2 rounded font-bold w-full">Open Jitsi Briefing</button>
+                    <div id="room-embed" class="mt-2"></div>
+                </div>
+            </div>
+
+            <!-- TAB 10: DIAGNOSTIC CONSOLE -->
+            <div id="tab-content-console" class="hidden space-y-3 h-full flex flex-col">
+                <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest"><i class="fa-solid fa-terminal mr-2"></i> Local Diagnostic Console</h2>
+                <div class="flex-1 bg-gray-900 border border-gray-800 rounded-lg p-3 font-mono text-xs flex flex-col h-72">
+                    <div id="console-log" class="flex-1 overflow-y-auto space-y-1 text-gray-300">
+                        <div class="text-green-500">[SYSTEM] Diagnostic console ready. Type 'help', 'alerts', 'quarantine', or 'clear'.</div>
+                    </div>
+                    <div class="flex mt-2 border-t border-gray-800 pt-2">
+                        <span class="text-green-400 mr-2">soc@lab:~$</span>
+                        <input id="console-cmd" type="text" onkeydown="runConsoleCmd(event)" class="flex-1 bg-transparent focus:outline-none text-green-300" placeholder="Enter diagnostic command...">
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
     <script>
-        // Bound directly to your active Serveo tunnel URL
-        const BACKEND_URL = 'https://919a6d4f2b187a55-74-255-35-65.serveousercontent.com';
+        const auditTrail = [];
+        let quarantinedIps = [];
+        let alerts = [
+            { id: 1, time: '02:10:04', sev: 'HIGH', src: '198.51.100.42', desc: 'Repeated SSH auth probes detected on decoy port 2222', status: 'New' },
+            { id: 2, time: '02:14:19', sev: 'MEDIUM', src: '203.0.113.88', desc: 'Anomalous outbound TCP session to mining pool port 3333', status: 'Investigating' }
+        ];
+
+        function recordAudit(msg) {
+            const entry = `[${new Date().toISOString()}] ${msg}`;
+            auditTrail.push(entry);
+        }
 
         function switchTab(tab) {
-            ['overview', 'isolation', 'cdr'].forEach(t => {
+            ['intrusions', 'honeypots', 'quarantine', 'recovery', 'mixers', 'hunting', 'scriptlab', 'tools', 'comms', 'console'].forEach(t => {
                 document.getElementById(`tab-content-${t}`).classList.add('hidden');
-                document.getElementById(`btn-${t}`).classList.remove('bg-gray-800', 'text-purple-300');
-                document.getElementById(`btn-${t}`).classList.add('hover:bg-gray-800', 'text-gray-300');
+                document.getElementById(`btn-${t}`).className = "w-full text-left px-3 py-2 hover:bg-gray-800/50 text-xs rounded text-gray-400 hover:text-green-300 transition";
             });
             document.getElementById(`tab-content-${tab}`).classList.remove('hidden');
-            document.getElementById(`btn-${tab}`).classList.add('bg-gray-800', 'text-purple-300');
-            document.getElementById(`btn-${tab}`).classList.remove('hover:bg-gray-800', 'text-gray-300');
+            document.getElementById(`btn-${tab}`).className = "w-full text-left px-3 py-2 bg-gray-800 text-xs rounded text-green-300 font-semibold transition border border-gray-700";
+            if (window.innerWidth < 768) document.getElementById('sidebar').classList.add('-translate-x-full');
         }
 
-        function triggerIsolate() {
-            const agentId = document.getElementById('host-input').value;
-            if(!agentId) return alert('Enter a target IP or Agent ID.');
-            fetch(`${BACKEND_URL}/api/wazuh/isolate`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({agentId})
-            })
-            .then(r => r.json())
-            .then(res => {
-                const out = document.getElementById('isolation-result');
-                out.classList.remove('hidden');
-                out.innerText = JSON.stringify(res, null, 2);
-            })
-            .catch(err => alert('API Error: ' + err));
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('-translate-x-full');
         }
 
-        function triggerCDR() {
-            const inputFile = document.getElementById('cdr-input').value;
-            fetch(`${BACKEND_URL}/api/cdr/sanitize`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({inputFile, outputFile: 'clean_' + inputFile})
-            })
-            .then(r => r.json())
-            .then(res => {
-                const out = document.getElementById('cdr-result');
-                out.classList.remove('hidden');
-                out.innerText = res.log || JSON.stringify(res, null, 2);
-            })
-            .catch(err => alert('API Error: ' + err));
+        function toggleLogging() {
+            const btn = document.getElementById('rec-btn');
+            const active = btn.innerText.includes('OFF');
+            btn.className = active
+                ? "bg-red-950 border border-red-700 text-red-200 px-2 py-1 rounded text-[10px] flex items-center animate-pulse"
+                : "bg-gray-800 border border-gray-700 text-gray-400 px-2 py-1 rounded text-[10px] flex items-center";
+            btn.innerHTML = `<i class="fa-solid fa-circle text-[5px] mr-1"></i> ${active ? 'LOGGING ON' : 'LOGGING OFF'}`;
+            recordAudit(`Session logging ${active ? 'enabled' : 'disabled'}`);
         }
+
+        function resetSessionState() {
+            if (confirm('Reset UI session state and clear local temporary buffers?')) {
+                sessionStorage.clear();
+                quarantinedIps = [];
+                renderQuarantineList();
+                recordAudit('Session UI state reset');
+                alert('UI session state reset.');
+            }
+        }
+
+        function renderAlerts() {
+            const filter = document.getElementById('severity-filter').value;
+            const tbody = document.getElementById('alerts-tbody');
+            const rows = alerts.filter(a => filter === 'ALL' || a.sev === filter);
+            tbody.innerHTML = rows.map(a => `
+                <tr>
+                    <td class="p-2 text-gray-500">${a.time}</td>
+                    <td class="p-2 ${a.sev === 'HIGH' ? 'text-red-400 font-bold' : 'text-amber-400'}">${a.sev}</td>
+                    <td class="p-2 text-blue-300">${a.src}</td>
+                    <td class="p-2">${a.desc}</td>
+                    <td class="p-2 text-green-300">${a.status}</td>
+                    <td class="p-2 space-x-2">
+                        <button onclick="quickIsolate('${a.src}')" class="bg-red-950 hover:bg-red-900 border border-red-800 text-red-200 px-2 py-0.5 rounded text-[10px]">Isolate IP</button>
+                        <button onclick="markResolved(${a.id})" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-2 py-0.5 rounded text-[10px]">Resolve</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function addSampleAlert() {
+            const now = new Date().toTimeString().split(' ')[0];
+            const id = Date.now();
+            alerts.unshift({ id, time: now, sev: 'HIGH', src: '192.0.2.105', desc: 'Simulated lab IDS signature match on local test subnet', status: 'New' });
+            renderAlerts();
+            recordAudit('Added lab intrusion alert from 192.0.2.105');
+        }
+
+        function markResolved(id) {
+            alerts = alerts.map(a => a.id === id ? { ...a, status: 'Resolved' } : a);
+            renderAlerts();
+            recordAudit(`Marked alert ${id} as Resolved`);
+        }
+
+        function quickIsolate(ip) {
+            document.getElementById('quarantine-ip-input').value = ip;
+            addQuarantineEntry();
+            switchTab('quarantine');
+        }
+
+        function addQuarantineEntry() {
+            const ip = (document.getElementById('quarantine-ip-input').value || '').trim();
+            const scope = document.getElementById('quarantine-scope').value;
+            if (!ip) return;
+            if (!quarantinedIps.some(q => q.ip === ip)) {
+                quarantinedIps.push({ ip, scope, at: new Date().toLocaleTimeString() });
+            }
+            document.getElementById('quarantine-ip-input').value = '';
+            renderQuarantineList();
+            recordAudit(`Quarantined ${ip} with policy ${scope}`);
+        }
+
+        function releaseQuarantine(ip) {
+            quarantinedIps = quarantinedIps.filter(q => q.ip !== ip);
+            renderQuarantineList();
+            recordAudit(`Released ${ip} from quarantine`);
+        }
+
+        function renderQuarantineList() {
+            const el = document.getElementById('quarantine-list');
+            document.getElementById('iso-count').innerText = String(quarantinedIps.length);
+            if (!quarantinedIps.length) {
+                el.innerHTML = '<div class="text-gray-500 text-[11px]">No IPs currently quarantined.</div>';
+                return;
+            }
+            el.innerHTML = quarantinedIps.map(q => `
+                <div class="flex justify-between items-center p-2 bg-gray-950 rounded border border-red-900/60">
+                    <div>
+                        <span class="text-red-300 font-bold">${q.ip}</span>
+                        <span class="text-[10px] text-gray-500 ml-2">[${q.scope}] @ ${q.at}</span>
+                    </div>
+                    <button onclick="releaseQuarantine('${q.ip}')" class="bg-green-950 hover:bg-green-900 border border-green-700 text-green-300 px-2 py-0.5 rounded text-[10px]">Release</button>
+                </div>
+            `).join('');
+        }
+
+        function generateRule() {
+            const fmt = document.getElementById('hunt-format').value;
+            const target = document.getElementById('hunt-target').value || 'lab_indicator';
+            const out = document.getElementById('hunt-output');
+            if (fmt === 'sigma') {
+                out.innerText = `title: Hunt - ${target}\nstatus: experimental\nlogsource:\n    category: network_connection\ndetection:\n    selection:\n        Indicator|contains: '${target}'\n    condition: selection\nlevel: medium`;
+            } else if (fmt === 'yara') {
+                out.innerText = `rule Lab_${target.replace(/[^a-zA-Z0-9]/g, '_')} {\n    strings:\n        $a = "${target}" ascii wide\n    condition:\n        $a\n}`;
+            } else {
+                out.innerText = `DeviceNetworkEvents\n| where RemoteUrl has "${target}" or RemoteIP == "${target}"\n| project Timestamp, DeviceName, RemoteIP, RemotePort`;
+            }
+        }
+
+        function runLabManifest() {
+            const name = document.getElementById('task-name').value || 'lab-check';
+            const script = document.getElementById('task-script').value;
+            const out = document.getElementById('task-result');
+            const summary = `[${new Date().toLocaleTimeString()}] Packaged "${name}" (${script.split('\n').length} lines) -> Allowlisted lab check complete.`;
+            out.innerText += `\n${summary}`;
+            recordAudit(summary);
+        }
+
+        function openRoom() {
+            const room = document.getElementById('room-name').value || 'soc-triage-room';
+            document.getElementById('room-embed').innerHTML = `<iframe src="https://meet.jit.si/${encodeURIComponent(room)}" allow="camera; microphone; fullscreen; display-capture" width="100%" height="240px" style="border:0; border-radius:8px;"></iframe>`;
+        }
+
+        function runConsoleCmd(e) {
+            if (e.key === 'Enter') {
+                const input = document.getElementById('console-cmd');
+                const log = document.getElementById('console-log');
+                const cmd = input.value.trim();
+                if (!cmd) return;
+                log.innerHTML += `<div><span class="text-green-500">soc@lab:~$</span> ${cmd}</div>`;
+                if (cmd === 'clear') log.innerHTML = '';
+                else if (cmd === 'help') log.innerHTML += `<div class="text-gray-400">Commands: help, alerts, quarantine, clear</div>`;
+                else if (cmd === 'alerts') log.innerHTML += `<div class="text-gray-400">Active alerts: ${alerts.length}</div>`;
+                else if (cmd === 'quarantine') log.innerHTML += `<div class="text-gray-400">Quarantined IPs: ${quarantinedIps.map(x => x.ip).join(', ') || 'none'}</div>`;
+                else log.innerHTML += `<div class="text-gray-400">Unknown utility '${cmd}'. Type 'help'.</div>`;
+                log.scrollTop = log.scrollHeight;
+                input.value = '';
+            }
+        }
+
+        function exportAuditBundle() {
+            const content = auditTrail.length ? auditTrail.join('\n') : 'No audit events recorded in this session.';
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `defensive_soc_audit_${Date.now()}.log`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        renderAlerts();
+        renderQuarantineList();
     </script>
 </body>
 </html>
