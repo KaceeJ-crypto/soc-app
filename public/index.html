@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Defensive SOC & Threat Hunting Lab</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body class="bg-gray-950 text-green-400 font-mono h-screen flex flex-col overflow-hidden select-none">
+
+  <!-- Top Bar -->
+  <header class="bg-gray-900 border-b border-gray-800 px-4 py-2 flex justify-between items-center z-20">
+    <div class="flex items-center space-x-3">
+      <button onclick="toggleSidebar()" class="md:hidden text-green-400 text-lg focus:outline-none">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <i class="fa-solid fa-shield-halved text-green-500 text-xl"></i>
+      <span class="text-xs md:text-sm font-bold text-green-300 tracking-wider">
+        DEFENSIVE-SOC <span class="text-[9px] bg-green-950 text-green-400 border border-green-800 px-1.5 py-0.5 rounded">MODULAR LAB</span>
+      </span>
+    </div>
+    <div class="flex items-center space-x-2 text-xs">
+      <button onclick="exportAuditLogs()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-2 py-1 rounded text-[10px]">
+        <i class="fa-solid fa-download mr-1"></i> EXPORT LOGS
+      </button>
+      <button onclick="toggleLogging()" id="rec-btn" class="bg-gray-800 border border-gray-700 text-gray-400 px-2 py-1 rounded text-[10px] flex items-center">
+        <i class="fa-solid fa-circle text-[5px] mr-1"></i> LOGGING OFF
+      </button>
+      <button onclick="resetSessionUI()" class="bg-red-950 hover:bg-red-800 text-red-200 border border-red-700 px-2 py-1 rounded font-bold text-[10px]">
+        <i class="fa-solid fa-eraser mr-1"></i> RESET UI
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="flex-1 flex overflow-hidden relative">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="absolute md:relative z-10 w-64 h-full bg-gray-900 border-r border-gray-800 p-3 space-y-1 transform -translate-x-full md:translate-x-0 transition-transform duration-200 flex flex-col justify-between overflow-y-auto">
+      <div class="space-y-1">
+        <button onclick="switchTab('intrusions')" id="btn-intrusions" class="w-full text-left px-3 py-2 bg-gray-800 text-xs rounded text-green-300 font-semibold border border-gray-700"><i class="fa-solid fa-bell mr-2"></i> IDS & Alert Triage</button>
+        <button onclick="switchTab('quarantine')" id="btn-quarantine" class="w-full text-left px-3 py-2 hover:bg-gray-800/60 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-ban mr-2"></i> IP Isolation & Quarantine</button>
+        <button onclick="switchTab('honeypots')" id="btn-honeypots" class="w-full text-left px-3 py-2 hover:bg-gray-800/60 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-spider mr-2"></i> Honeypot Decoys</button>
+        <button onclick="switchTab('mixers')" id="btn-mixers" class="w-full text-left px-3 py-2 hover:bg-gray-800/60 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-coins mr-2"></i> Mixers & Miners Watch</button>
+        <button onclick="switchTab('hunting')" id="btn-hunting" class="w-full text-left px-3 py-2 hover:bg-gray-800/60 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-magnifying-glass mr-2"></i> Detection Rule Lab</button>
+        <button onclick="switchTab('scriptlab')" id="btn-scriptlab" class="w-full text-left px-3 py-2 hover:bg-gray-800/60 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-code mr-2"></i> Script Lab & Tasks</button>
+        <button onclick="switchTab('recovery')" id="btn-recovery" class="w-full text-left px-3 py-2 hover:bg-gray-800/60 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-clipboard-check mr-2"></i> Recovery Checklist</button>
+        <button onclick="switchTab('tools')" id="btn-tools" class="w-full text-left px-3 py-2 hover:bg-gray-800/60 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-toolbox mr-2"></i> Defensive Tool Hub</button>
+        <button onclick="switchTab('comms')" id="btn-comms" class="w-full text-left px-3 py-2 hover:bg-gray-800/60 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-video mr-2"></i> Briefing Room</button>
+        <button onclick="switchTab('console')" id="btn-console" class="w-full text-left px-3 py-2 hover:bg-gray-800/60 text-xs rounded text-gray-400 hover:text-green-300 transition"><i class="fa-solid fa-terminal mr-2"></i> Diagnostic Console</button>
+      </div>
+      <div class="p-2 bg-gray-950 rounded border border-gray-800 text-[10px] text-gray-500 space-y-1 mt-3">
+        <div>Uptime: <span class="text-green-400 font-mono" id="stat-uptime">local</span></div>
+        <div>Alerts: <span class="text-amber-400 font-mono" id="stat-alerts">0</span> | Isolated: <span class="text-red-400 font-mono" id="stat-iso">0</span></div>
+        <div>Manifests: <span class="text-blue-400 font-mono" id="pkg-count">0</span></div>
+      </div>
+    </aside>
+
+    <!-- Content Area -->
+    <main class="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 bg-gray-950">
+
+      <!-- IDS & TRIAGE -->
+      <section id="tab-intrusions" class="space-y-4">
+        <div class="flex flex-wrap justify-between items-center gap-2">
+          <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest">
+            <i class="fa-solid fa-bell mr-2"></i> Intrusion Detection & Triage
+          </h2>
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <label class="flex items-center space-x-1 text-[11px] text-gray-300 bg-gray-900 border border-gray-800 px-2 py-1 rounded">
+              <input id="dedupe-toggle" type="checkbox" onchange="renderAlerts()" class="accent-green-500" />
+              <span>Dedupe by IP</span>
+            </label>
+            <select id="sev-filter" onchange="renderAlerts()" class="bg-gray-900 border border-gray-700 text-gray-200 rounded px-2 py-1 text-[11px]">
+              <option value="ALL">All Severities</option>
+              <option value="HIGH">High Only</option>
+              <option value="MEDIUM">Medium Only</option>
+            </select>
+            <button onclick="addLabAlert()" class="bg-green-950 hover:bg-green-900 border border-green-700 text-green-300 px-2.5 py-1 rounded text-[11px] font-bold">
+              + Log Lab Event
+            </button>
+          </div>
+        </div>
+        <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 overflow-x-auto">
+          <table class="w-full text-left text-xs text-gray-300">
+            <thead class="bg-gray-950 text-gray-500 uppercase text-[10px] border-b border-gray-800">
+              <tr>
+                <th class="p-2">Time</th>
+                <th class="p-2">Severity</th>
+                <th class="p-2">Source IP</th>
+                <th class="p-2">Detection / Rule</th>
+                <th class="p-2">Status</th>
+                <th class="p-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="alerts-tbody" class="divide-y divide-gray-800 font-mono text-[11px]"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- IP ISOLATION & QUARANTINE -->
+      <section id="tab-quarantine" class="hidden space-y-4">
+        <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest">
+          <i class="fa-solid fa-ban mr-2"></i> IP Isolation & Quarantine Control
+        </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-3">
+            <label class="block text-xs text-gray-400">Target Lab IP Address</label>
+            <input id="iso-ip" type="text" placeholder="e.g., 192.0.2.77" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300 focus:outline-none" />
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">Containment Policy</label>
+                <select id="iso-scope" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300">
+                  <option value="BLOCK_ALL">Drop Traffic</option>
+                  <option value="SUBNET_ISOLATE">VLAN Isolate</option>
+                  <option value="RATE_LIMIT">Rate Limit</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">Auto-Release TTL (min)</label>
+                <input id="iso-ttl" type="number" value="30" min="1" max="1440" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300" />
+              </div>
+            </div>
+            <button onclick="isolateHost()" class="w-full bg-red-950 hover:bg-red-900 border border-red-800 text-red-200 text-xs py-2 rounded font-bold">
+              Quarantine Host IP
+            </button>
+          </div>
+          <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-2">
+            <div class="text-xs font-bold text-amber-400 uppercase">Quarantined Hosts</div>
+            <div id="iso-list" class="space-y-2 text-xs font-mono"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HONEYPOTS -->
+      <section id="tab-honeypots" class="hidden space-y-4">
+        <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest">
+          <i class="fa-solid fa-spider mr-2"></i> Honeypot & Deception Sensors
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-2">
+            <div class="font-bold text-green-300">Cowrie SSH/Telnet Decoy</div>
+            <p class="text-gray-400 text-[11px]">Logs simulated SSH brute-force and interactive shell commands inside an isolated decoy container.</p>
+            <a href="https://cowrie.org/" target="_blank" class="text-blue-400 hover:underline block">Cowrie Docs</a>
+          </div>
+          <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-2">
+            <div class="font-bold text-blue-300">T-Pot Aggregated Deception</div>
+            <p class="text-gray-400 text-[11px]">Multi-sensor deception platform for visualizing decoy telemetry in controlled lab environments.</p>
+            <a href="https://github.com/telekom-security/tpotce" target="_blank" class="text-blue-400 hover:underline block">T-Pot Repository</a>
+          </div>
+          <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-2">
+            <div class="font-bold text-purple-300">Suricata IDS / EVE JSON</div>
+            <p class="text-gray-400 text-[11px]">Signature and protocol anomaly detection engine feeding structured JSON alerts into triage.</p>
+            <a href="https://suricata.io/" target="_blank" class="text-blue-400 hover:underline block">Suricata Docs</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- MIXERS & MINERS -->
+      <section id="tab-mixers" class="hidden space-y-4">
+        <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest">
+          <i class="fa-solid fa-coins mr-2"></i> Mixers & Miners Watchlist
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-2">
+            <div class="font-bold text-amber-400 uppercase">Mixers & Compliance References</div>
+            <p class="text-gray-400 text-[11px]">Review public advisories and trace public ledger transactions using official explorers.</p>
+            <div class="flex flex-wrap gap-3 text-[11px]">
+              <a href="https://ofac.treasury.gov/" target="_blank" class="text-green-400 hover:underline">OFAC Advisories</a>
+              <a href="https://etherscan.io/" target="_blank" class="text-blue-400 hover:underline">Etherscan</a>
+              <a href="https://www.blockchain.com/explorer" target="_blank" class="text-blue-400 hover:underline">Blockchain Explorer</a>
+            </div>
+          </div>
+          <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-2">
+            <div class="font-bold text-blue-400 uppercase">Mining Pools & Cryptojacking Hunt</div>
+            <p class="text-gray-400 text-[11px]">Hunt for anomalous Stratum traffic (ports 3333, 4444, 5555) and sustained CPU spikes on lab hosts.</p>
+            <div class="flex flex-wrap gap-3 text-[11px]">
+              <a href="https://supportxmr.com/" target="_blank" class="text-blue-400 hover:underline">SupportXMR</a>
+              <a href="https://www.f2pool.com/" target="_blank" class="text-blue-400 hover:underline">F2Pool</a>
+              <a href="https://braiins.com/pool" target="_blank" class="text-blue-400 hover:underline">Braiins Pool</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DETECTION RULE LAB -->
+      <section id="tab-hunting" class="hidden space-y-4">
+        <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest">
+          <i class="fa-solid fa-magnifying-glass mr-2"></i> Detection & Hunting Rule Generator
+        </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-3">
+            <select id="rule-fmt" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300">
+              <option value="sigma">Sigma Detection Rule</option>
+              <option value="yara">YARA Signature</option>
+              <option value="kql">KQL Query</option>
+              <option value="spl">Splunk SPL Query</option>
+            </select>
+            <input id="rule-target" type="text" value="mining.subscribe" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300" />
+            <button onclick="compileRule()" class="w-full bg-green-950 hover:bg-green-900 border border-green-700 text-green-300 text-xs py-2 rounded font-bold">
+              Compile Detection Rule
+            </button>
+          </div>
+          <pre id="rule-out" class="bg-gray-900 p-4 rounded-lg border border-gray-800 text-[11px] font-mono text-gray-300 overflow-auto">Select a rule format and click "Compile Detection Rule".</pre>
+        </div>
+      </section>
+
+      <!-- SCRIPT LAB & TASKS -->
+      <section id="tab-scriptlab" class="hidden space-y-4">
+        <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest">
+          <i class="fa-solid fa-code mr-2"></i> Script Lab Manifests & Task Runner
+        </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-3">
+            <input id="task-name" type="text" value="local-socket-audit" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300" />
+            <textarea id="task-code" rows="4" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300">ss -tulnp
+sha256sum /etc/hosts</textarea>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="buildManifest()" class="bg-green-950 hover:bg-green-900 border border-green-700 text-green-300 text-xs px-3 py-2 rounded font-bold">Build Manifest</button>
+              <button onclick="exportManifest()" class="bg-blue-950 hover:bg-blue-900 border border-blue-700 text-blue-300 text-xs px-3 py-2 rounded font-bold">Export JSON</button>
+              <label class="cursor-pointer bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-xs px-3 py-2 rounded font-bold">
+                Import JSON <input type="file" accept=".json,application/json" onchange="importManifest(event)" class="hidden" />
+              </label>
+            </div>
+            <div class="pt-2 border-t border-gray-800 space-y-2">
+              <select id="task-preset" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300">
+                <option value="sockets">sockets — Local Socket Baseline Check</option>
+                <option value="hashes">hashes — SHA-256 Config Integrity Check</option>
+                <option value="logs">logs — Local Service Log Check</option>
+              </select>
+              <button onclick="runAllowlistedTask()" class="w-full bg-gray-800 hover:bg-gray-700 border border-gray-700 text-green-300 text-xs py-2 rounded font-bold">
+                Run Allowlisted Lab Check
+              </button>
+              <pre id="task-run-log" class="bg-gray-950 p-2 rounded text-[10px] text-gray-300 h-24 overflow-y-auto border border-gray-800">[+] Lab task runner ready.</pre>
+            </div>
+          </div>
+          <pre id="manifest-json" class="bg-gray-900 p-4 rounded-lg border border-gray-800 text-[11px] font-mono text-gray-300 overflow-auto">No JSON manifest built or imported yet.</pre>
+        </div>
+      </section>
+
+      <!-- RECOVERY CHECKLIST -->
+      <section id="tab-recovery" class="hidden space-y-4">
+        <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest">
+          <i class="fa-solid fa-clipboard-check mr-2"></i> Post-Incident Recovery Checklist
+        </h2>
+        <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-2 text-xs max-w-2xl">
+          <label class="flex items-center space-x-2 p-2 bg-gray-950 rounded border border-gray-800 cursor-pointer">
+            <input type="checkbox" class="accent-green-500" /> <span>Confirm host/IP isolation policy is active and verified.</span>
+          </label>
+          <label class="flex items-center space-x-2 p-2 bg-gray-950 rounded border border-gray-800 cursor-pointer">
+            <input type="checkbox" class="accent-green-500" /> <span>Export audit logs, alert history, and file hash snapshots.</span>
+          </label>
+          <label class="flex items-center space-x-2 p-2 bg-gray-950 rounded border border-gray-800 cursor-pointer">
+            <input type="checkbox" class="accent-green-500" /> <span>Rotate lab credentials, tokens, and SSH keys where applicable.</span>
+          </label>
+          <label class="flex items-center space-x-2 p-2 bg-gray-950 rounded border border-gray-800 cursor-pointer">
+            <input type="checkbox" class="accent-green-500" /> <span>Re-verify baseline integrity before closing incident triage.</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- DEFENSIVE TOOL HUB -->
+      <section id="tab-tools" class="hidden space-y-4">
+        <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest">
+          <i class="fa-solid fa-toolbox mr-2"></i> Open-Source Defensive & OSINT Stack
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-1">
+            <div class="font-bold text-blue-400">Network & Packet Analysis</div>
+            <ul class="text-gray-400 space-y-1 list-disc list-inside">
+              <li><a href="https://www.wireshark.org/" target="_blank" class="hover:text-green-300">Wireshark</a></li>
+              <li><a href="https://zeek.org/" target="_blank" class="hover:text-green-300">Zeek</a></li>
+              <li><a href="https://suricata.io/" target="_blank" class="hover:text-green-300">Suricata</a></li>
+            </ul>
+          </div>
+          <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-1">
+            <div class="font-bold text-purple-400">SIEM, EDR & Endpoint Query</div>
+            <ul class="text-gray-400 space-y-1 list-disc list-inside">
+              <li><a href="https://wazuh.com/" target="_blank" class="hover:text-green-300">Wazuh</a></li>
+              <li><a href="https://osquery.io/" target="_blank" class="hover:text-green-300">osquery</a></li>
+              <li><a href="https://virustotal.github.io/yara/" target="_blank" class="hover:text-green-300">YARA</a></li>
+            </ul>
+          </div>
+          <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-1">
+            <div class="font-bold text-teal-400">Threat Intel & Frameworks</div>
+            <ul class="text-gray-400 space-y-1 list-disc list-inside">
+              <li><a href="https://attack.mitre.org/" target="_blank" class="hover:text-green-300">MITRE ATT&CK</a></li>
+              <li><a href="https://otx.alienvault.com/" target="_blank" class="hover:text-green-300">AlienVault OTX</a></li>
+              <li><a href="https://osintframework.com/" target="_blank" class="hover:text-green-300">OSINT Framework</a></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- BRIEFING ROOM -->
+      <section id="tab-comms" class="hidden space-y-4">
+        <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest">
+          <i class="fa-solid fa-video mr-2"></i> Incident Briefing Room
+        </h2>
+        <div class="bg-gray-900 p-4 rounded-lg border border-gray-800 space-y-3 max-w-xl">
+          <input id="room-input" type="text" value="soc-incident-briefing" class="w-full bg-gray-950 border border-gray-800 rounded p-2 text-xs text-green-300" />
+          <button onclick="openBriefing()" class="w-full bg-green-950 hover:bg-green-900 border border-green-700 text-green-300 text-xs py-2 rounded font-bold">
+            Launch Briefing Video Room
+          </button>
+          <div id="room-embed" class="mt-2"></div>
+        </div>
+      </section>
+
+      <!-- DIAGNOSTIC CONSOLE -->
+      <section id="tab-console" class="hidden space-y-3 h-full flex flex-col">
+        <h2 class="text-sm md:text-base font-bold text-green-400 uppercase tracking-widest">
+          <i class="fa-solid fa-terminal mr-2"></i> Local Diagnostic Console
+        </h2>
+        <div class="flex-1 bg-gray-900 border border-gray-800 rounded-lg p-3 font-mono text-xs flex flex-col h-72">
+          <div id="console-log" class="flex-1 overflow-y-auto space-y-1 text-gray-300">
+            <div class="text-green-500">[SYSTEM] Diagnostic console ready. Type 'help', 'status', 'alerts', 'isolated', or 'clear'.</div>
+          </div>
+          <div class="flex mt-2 border-t border-gray-800 pt-2">
+            <span class="text-green-400 mr-2">soc@lab:~$</span>
+            <input id="console-input" type="text" onkeydown="handleConsole(event)" class="flex-1 bg-transparent focus:outline-none text-green-300" placeholder="Type a command..." />
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="/js/soc-core.js"></script>
+</body>
+</html>
